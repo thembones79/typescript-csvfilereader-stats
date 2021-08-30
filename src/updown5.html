@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <style>
+      #progress_bar {
+        margin: 10px 0;
+        padding: 3px;
+        border: 1px solid #000;
+        font-size: 14px;
+        clear: both;
+        opacity: 0;
+        transition: opacity 1s linear;
+        -moz-transition: opacity 1s linear;
+        -o-transition: opacity 1s linear;
+        -webkit-transition: opacity 1s linear;
+      }
+      #progress_bar.loading {
+        opacity: 1;
+      }
+      #progress_bar .percent {
+        background-color: #99ccff;
+        height: auto;
+        width: 0;
+      }
+    </style>
+
+    <input type="file" id="files" name="file" />
+    <button onclick="abortRead();">Cancel read</button>
+    <div id="progress_bar"><div class="percent">0%</div></div>
+    <output id="list"></output>
+
+    <script>
+      let reader;
+      let progress = document.querySelector(".percent");
+
+      function abortRead() {
+        reader.abort();
+      }
+
+      function errorHandler(evt) {
+        switch (evt.target.error.code) {
+          case evt.target.error.NOT_FOUND_ERR:
+            alert("File Not Found!");
+            break;
+          case evt.target.error.NOT_READABLE_ERR:
+            alert("File is not readable");
+            break;
+          case evt.target.error.ABORT_ERR:
+            break;
+          default:
+            alert("An error occurred reading this file.");
+        }
+      }
+
+      function updateProgress(evt) {
+        if (evt.lengthComputable) {
+          let percentLoaded = Math.round((evt.loaded / evt.total) * 100);
+          if (percentLoaded < 100) {
+            progress.style.width = percentLoaded + "%";
+            progress.textContent = percentLoaded + "%";
+          }
+        }
+      }
+
+      function handleFileSelect(evt) {
+        // Reset progress indicator on new file selection.
+        progress.style.width = "0%";
+        progress.textContent = "0%";
+
+        reader = new FileReader();
+        reader.onerror = errorHandler;
+        reader.onprogress = updateProgress;
+        reader.onabort = function (e) {
+          alert("File read cancelled");
+        };
+        reader.onloadstart = function (e) {
+          document.getElementById("progress_bar").className = "loading";
+        };
+        reader.onload = function (e) {
+          // Ensure that the progress bar displays 100% at the end.
+          progress.style.width = "100%";
+          progress.textContent = "100%";
+          setTimeout(
+            "document.getElementById('progress_bar').className='';",
+            2000
+          );
+          //console.log(e.target.result);
+
+          let files = evt.target.files; // FileList object
+
+          // files is a FileList of File objects. List some properties.
+          let output = [];
+          for (let i = 0, f; (f = files[i]); i++) {
+            output.push(
+              "<li><strong>",
+              escape(f.name),
+              "</strong> (",
+              f.type || "n/a",
+              ") - ",
+              f.size,
+              " bytes, last modified: ",
+              f.lastModifiedDate
+                ? f.lastModifiedDate.toLocaleDateString()
+                : "n/a",
+              "</li>"
+            );
+
+            const data = e.target.result.split("\n").map((row) => {
+              return row.split(",");
+            });
+
+            const renderTableHeader = (headings) => {
+              // console.log(headings);
+              for (let i = 0; i < headings.length; i++) {
+                headings[i] = `<th>${headings[i]}</th>`;
+              }
+              // console.log(headings);
+
+              return `<tr>${headings.join("")}</tr>`;
+            };
+
+            const renderTableBody3 = (rows) => {
+              for (let i = 0; i < rows.length; i++) {
+                for (let j = 0; j < rows[i].length; j++) {
+                  rows[i][j] = `<td>${rows[i][j]}</td>`;
+                }
+
+                rows[i] = `<tr>${rows[i].join("")}</tr>`;
+              }
+              console.log(rows);
+              return rows.join("");
+            };
+
+            function createTable2(data) {
+              const [headings, ...rows] = data;
+              rows.pop();
+              console.log(rows);
+              return `
+              <table id="example" class="display nowrap" style="width: 100%">
+                  <thead>${renderTableHeader(headings)}</thead>
+                  <tbody>${renderTableBody3(rows)}</tbody>
+                </table>
+              `;
+            }
+
+            const htmlTable = createTable2(data);
+
+            const htmlHeader = `
+            <!DOCTYPE html>
+            <html lang="en">
+              <head>
+                <meta charset="UTF-8" />
+                <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <link
+                  rel="stylesheet"
+                  href="https://cdn.datatables.net/1.11.0/css/jquery.dataTables.min.css"
+                />
+                <title>Document</title>
+              </head>
+              <body>
+            `;
+
+            const strWithScripts =
+              "ICAgICAgICAgICAgICAgIDxzY3JpcHQgc3JjPSJodHRwczovL2NvZGUuanF1ZXJ5LmNvbS9qcXVlcnktMy41LjEuanMiPjwvc2NyaXB0PgogICAgICAgICAgICAgICAgPHNjcmlwdCBzcmM9Imh0dHBzOi8vY2RuLmRhdGF0YWJsZXMubmV0LzEuMTEuMC9qcy9qcXVlcnkuZGF0YVRhYmxlcy5taW4uanMiPjwvc2NyaXB0PgogICAgICAgICAgICAgICAgPHNjcmlwdD4KICAgICAgICAgICAgICAgICAgJChkb2N1bWVudCkucmVhZHkoZnVuY3Rpb24gKCkgewogICAgICAgICAgICAgICAgICAgICQoIiNleGFtcGxlIikuRGF0YVRhYmxlKHsKICAgICAgICAgICAgICAgICAgICAgIHNjcm9sbFg6IHRydWUsCiAgICAgICAgICAgICAgICAgICAgICBzY3JvbGxZOiAiODV2aCIsCiAgICAgICAgICAgICAgICAgICAgICBzY3JvbGxDb2xsYXBzZTogdHJ1ZSwKICAgICAgICAgICAgICAgICAgICAgIHBhZ2luZzogZmFsc2UsCiAgICAgICAgICAgICAgICAgICAgfSk7CiAgICAgICAgICAgICAgICAgIH0pOwogICAgICAgICAgICAgICAgPC9zY3JpcHQ+CiAgICAgICAgICAgICAgPC9ib2R5PgogICAgICAgICAgICA8L2h0bWw+";
+
+            function b64_to_utf8(str) {
+              return decodeURIComponent(escape(window.atob(str)));
+            }
+
+            const htmlFooter = b64_to_utf8(strWithScripts);
+
+            //console.log(htmlFooter);
+
+            download(`${f.name}.html`, htmlHeader + htmlTable + htmlFooter);
+          }
+          document.getElementById("list").innerHTML =
+            "<ul>" + output.join("") + "</ul>";
+        };
+
+        // Read in the image file as a binary string.
+        reader.readAsBinaryString(evt.target.files[0]);
+      }
+
+      document
+        .getElementById("files")
+        .addEventListener("change", handleFileSelect, false);
+
+      function onChange(event) {
+        let file = event.target.files[0];
+        let reader = new FileReader();
+        reader.onload = function (e) {
+          // The file's text will be printed here
+          // console.log(e.target.result);
+        };
+
+        reader.readAsText(file);
+      }
+
+      function download(filename, text) {
+        let pom = document.createElement("a");
+        pom.setAttribute(
+          "href",
+          "data:text/plain;charset=utf-8," + encodeURIComponent(text)
+        );
+        pom.setAttribute("download", filename);
+
+        if (document.createEvent) {
+          let event = document.createEvent("MouseEvents");
+          event.initEvent("click", true, true);
+          pom.dispatchEvent(event);
+        } else {
+          pom.click();
+        }
+      }
+      // download("test.html", "Hello world!");
+    </script>
+  </body>
+</html>
